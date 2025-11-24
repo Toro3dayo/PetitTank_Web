@@ -9,10 +9,16 @@
 <body>
   <header>
     <h1>PetitTank</h1>
-    <p class="instructions">WASD で移動、Space で射撃、R でリセット</p>
+    <p class="instructions">WASD で移動、Space で射撃、R でリセット（スマホはパッド＋砲弾ボタン対応）</p>
   </header>
   <main>
     <canvas id="gameCanvas" width="960" height="640"></canvas>
+    <div class="touch-controls" aria-hidden="true">
+      <div class="touch-pad" id="touchPad">
+        <div class="touch-pad__stick" id="touchPadStick"></div>
+      </div>
+      <button class="fire-button" id="fireButton">砲弾</button>
+    </div>
   </main>
   <script type="module" src="./js/main.js"></script>
 </body>

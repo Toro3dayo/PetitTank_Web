@@ -19,4 +19,15 @@ export class Input {
   isPressed(key) {
     return this.keys.has(key.toLowerCase());
   }
+
+  // 仮想パッドなどからキー状態を直接操作するためのヘルパー
+  press(keys) {
+    const list = Array.isArray(keys) ? keys : [keys];
+    list.forEach((k) => this.keys.add(k.toLowerCase()));
+  }
+
+  release(keys) {
+    const list = Array.isArray(keys) ? keys : [keys];
+    list.forEach((k) => this.keys.delete(k.toLowerCase()));
+  }
 }
