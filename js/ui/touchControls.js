@@ -66,17 +66,27 @@ export class TouchControls {
     const dx = clientX - this.center.x;
     const dy = clientY - this.center.y;
     const threshold = 12;
-    const radius = Math.min(40, Math.hypot(dx, dy));
-    const angle = Math.atan2(dy, dx);
-    const limitedX = Math.cos(angle) * radius;
-    const limitedY = Math.sin(angle) * radius;
-    this.setStickPosition(limitedX, limitedY);
 
-    this.input.release(this.boundKeys);
-    if (dy < -threshold) this.input.press('w');
-    if (dy > threshold) this.input.press('s');
-    if (dx < -threshold) this.input.press('a');
-    if (dx > threshold) this.input.press('d');
+    // 十字パッド風に軸ごとへ入力を限定することで、意図せぬ回転を防ぐ
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    const radius = Math.min(40, Math.hypot(dx, dy));
+
+    // 見た目のスティック位置も軸方向へスナップさせる
+    if (absX > absY && absX > threshold) {
+      const limitedX = Math.sign(dx) * radius;
+      this.setStickPosition(limitedX, 0);
+      this.input.release(this.boundKeys);
+      this.input.press(dx > 0 ? 'd' : 'a');
+    } else if (absY > threshold) {
+      const limitedY = Math.sign(dy) * radius;
+      this.setStickPosition(0, limitedY);
+      this.input.release(this.boundKeys);
+      this.input.press(dy > 0 ? 's' : 'w');
+    } else {
+      this.setStickPosition(0, 0);
+      this.input.release(this.boundKeys);
+    }
   }
 
   resetMovement() {

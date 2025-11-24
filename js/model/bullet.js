@@ -1,12 +1,14 @@
 // 弾丸モデル
 import { config } from '../core/config.js';
+import { getDirectionVector } from '../core/direction.js';
 
 export class Bullet {
   constructor(x, y, angle, owner) {
+    const dir = getDirectionVector(angle);
     this.x = x;
     this.y = y;
-    this.vx = Math.cos(angle) * config.bullet.speed;
-    this.vy = Math.sin(angle) * config.bullet.speed;
+    this.vx = dir.x * config.bullet.speed;
+    this.vy = dir.y * config.bullet.speed;
     this.size = config.bullet.size;
     this.radius = this.size / 2;
     this.owner = owner; // 'player' or 'enemy'

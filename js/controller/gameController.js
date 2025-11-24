@@ -4,6 +4,12 @@ import { Bullet } from '../model/bullet.js';
 import { createLevel } from '../model/level.js';
 import { Renderer } from '../view/renderer.js';
 import { config } from '../core/config.js';
+import {
+  angleFromVector,
+  DIRECTION,
+  getDirectionVector,
+  shortestAngleDelta,
+} from '../core/direction.js';
 
 const STATE = {
   TITLE: 'TITLE',
@@ -27,10 +33,10 @@ export class GameController {
   }
 
   reset() {
-    this.player = new Tank(120, 120, 0, true);
+    this.player = new Tank(120, 120, DIRECTION.UP, true);
     this.enemies = [
-      new Tank(820, 520, Math.PI, false),
-      new Tank(760, 140, Math.PI, false),
+      new Tank(820, 520, DIRECTION.LEFT, false),
+      new Tank(760, 140, DIRECTION.LEFT, false),
     ];
     this.bullets = [];
     this.state = STATE.TITLE;
@@ -68,12 +74,13 @@ export class GameController {
   updatePlayer(delta) {
     if (!this.player.alive) return;
     const moveSpeed = config.player.speed;
-    const rot = config.player.rotateSpeed;
 
-    if (this.input.isPressed('a')) this.player.rotate(-rot);
-    if (this.input.isPressed('d')) this.player.rotate(rot);
-    if (this.input.isPressed('w')) this.tryMove(this.player, Math.cos(this.player.angle) * moveSpeed, Math.sin(this.player.angle) * moveSpeed);
-    if (this.input.isPressed('s')) this.tryMove(this.player, -Math.cos(this.player.angle) * moveSpeed, -Math.sin(this.player.angle) * moveSpeed);
+    const desired = this.getPlayerDesiredAngle();
+    if (desired !== null) {
+      this.player.angle = desired;
+      const dir = getDirectionVector(this.player.angle);
+      this.tryMove(this.player, dir.x * moveSpeed, dir.y * moveSpeed);
+    }
 
     if (this.input.isPressed(' ')) {
       const now = performance.now();
@@ -84,17 +91,25 @@ export class GameController {
     }
   }
 
+  getPlayerDesiredAngle() {
+    if (this.input.isPressed('w')) return DIRECTION.UP;
+    if (this.input.isPressed('a')) return DIRECTION.LEFT;
+    if (this.input.isPressed('s')) return DIRECTION.DOWN;
+    if (this.input.isPressed('d')) return DIRECTION.RIGHT;
+    return null;
+  }
+
   updateEnemies(delta) {
     this.enemies.forEach((enemy) => {
       if (!enemy.alive) return;
-      const targetAngle = Math.atan2(this.player.y - enemy.y, this.player.x - enemy.x);
-      let diff = targetAngle - enemy.angle;
-      diff = ((diff + Math.PI) % (Math.PI * 2)) - Math.PI; // -pi..pi
+      const targetAngle = angleFromVector(this.player.x - enemy.x, this.player.y - enemy.y);
+      const diff = shortestAngleDelta(enemy.angle, targetAngle);
       const rot = Math.sign(diff) * Math.min(Math.abs(diff), config.enemy.rotateSpeed);
       enemy.rotate(rot);
 
       if (Math.random() < 0.02) {
-        this.tryMove(enemy, Math.cos(enemy.angle) * config.enemy.speed, Math.sin(enemy.angle) * config.enemy.speed);
+        const dir = getDirectionVector(enemy.angle);
+        this.tryMove(enemy, dir.x * config.enemy.speed, dir.y * config.enemy.speed);
       }
 
       const distSq = (enemy.x - this.player.x) ** 2 + (enemy.y - this.player.y) ** 2;
@@ -177,8 +192,9 @@ export class GameController {
   }
 
   spawnBullet(tank, owner) {
-    const spawnX = tank.x + Math.cos(tank.angle) * (tank.radius + 2);
-    const spawnY = tank.y + Math.sin(tank.angle) * (tank.radius + 2);
+    const dir = getDirectionVector(tank.angle);
+    const spawnX = tank.x + dir.x * (tank.radius + 2);
+    const spawnY = tank.y + dir.y * (tank.radius + 2);
     this.bullets.push(new Bullet(spawnX, spawnY, tank.angle, owner));
   }
 
@@ -198,28 +214,6 @@ export class GameController {
       this.stateMessage = 'Victory! - R でリスタート';
     }
   }
-
-  render() {
-    this.renderer.clear();
-    this.renderer.beginCamera(this.player);
-    this.renderer.drawWalls(this.walls);
-    this.renderer.drawTank(this.player);
-    this.enemies.forEach((e) => this.renderer.drawTank(e));
-    this.bullets.forEach((b) => this.renderer.drawBullet(b));
-    this.renderer.endCamera();
-
-    if (this.state !== STATE.PLAY) {
-      this.renderer.drawMessage(this.stateMessage);
-    }
-  }
-}
-
-function circleRectCollision(circle, rect) {
-  const nearestX = clamp(circle.x, rect.x, rect.x + rect.width);
-  const nearestY = clamp(circle.y, rect.y, rect.y + rect.height);
-  const dx = circle.x - nearestX;
-  const dy = circle.y - nearestY;
-  return dx * dx + dy * dy < circle.r * circle.r;
 }
 
 function clamp(value, min, max) {
