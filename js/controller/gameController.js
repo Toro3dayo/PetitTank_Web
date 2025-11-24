@@ -201,10 +201,12 @@ export class GameController {
 
   render() {
     this.renderer.clear();
+    this.renderer.beginCamera(this.player);
     this.renderer.drawWalls(this.walls);
     this.renderer.drawTank(this.player);
     this.enemies.forEach((e) => this.renderer.drawTank(e));
     this.bullets.forEach((b) => this.renderer.drawBullet(b));
+    this.renderer.endCamera();
 
     if (this.state !== STATE.PLAY) {
       this.renderer.drawMessage(this.stateMessage);

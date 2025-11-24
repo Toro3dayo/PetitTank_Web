@@ -10,11 +10,36 @@ enemyImg.src = './Enemy1.png';
 export class Renderer {
   constructor(ctx) {
     this.ctx = ctx;
+    this.zoom = config.camera.zoom;
+    this.halfViewWidth = config.canvas.width / (2 * this.zoom);
+    this.halfViewHeight = config.canvas.height / (2 * this.zoom);
   }
 
   clear() {
     this.ctx.fillStyle = '#0f0f0f';
     this.ctx.fillRect(0, 0, config.canvas.width, config.canvas.height);
+  }
+
+  beginCamera(focus) {
+    const centerX = clamp(
+      focus.x,
+      this.halfViewWidth,
+      config.canvas.width - this.halfViewWidth
+    );
+    const centerY = clamp(
+      focus.y,
+      this.halfViewHeight,
+      config.canvas.height - this.halfViewHeight
+    );
+
+    this.ctx.save();
+    this.ctx.translate(config.canvas.width / 2, config.canvas.height / 2);
+    this.ctx.scale(this.zoom, this.zoom);
+    this.ctx.translate(-centerX, -centerY);
+  }
+
+  endCamera() {
+    this.ctx.restore();
   }
 
   drawWalls(walls) {
@@ -54,4 +79,8 @@ export class Renderer {
     ctx.fillText(text, config.canvas.width / 2, config.canvas.height / 2);
     ctx.restore();
   }
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }

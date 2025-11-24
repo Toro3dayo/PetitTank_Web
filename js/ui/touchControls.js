@@ -6,15 +6,16 @@ export class TouchControls {
     this.stick = document.getElementById('touchPadStick');
     this.fireButton = document.getElementById('fireButton');
     this.active = false;
+    this.activePointerId = null;
     this.center = { x: 0, y: 0 };
     this.boundKeys = ['w', 'a', 's', 'd'];
 
     if (this.joystick) {
       this.joystick.addEventListener('pointerdown', (e) => this.onPointerDown(e));
       this.joystick.addEventListener('pointermove', (e) => this.onPointerMove(e));
-      this.joystick.addEventListener('pointerup', () => this.onPointerUp());
-      this.joystick.addEventListener('pointercancel', () => this.onPointerUp());
-      this.joystick.addEventListener('pointerleave', () => this.onPointerUp());
+      this.joystick.addEventListener('pointerup', (e) => this.onPointerUp(e));
+      this.joystick.addEventListener('pointercancel', (e) => this.onPointerUp(e));
+      this.joystick.addEventListener('pointerleave', (e) => this.onPointerUp(e));
     }
 
     if (this.fireButton) {
@@ -26,19 +27,28 @@ export class TouchControls {
   }
 
   onPointerDown(event) {
+    event.preventDefault();
     this.active = true;
+    this.activePointerId = event.pointerId;
+    this.joystick.setPointerCapture(event.pointerId);
     const rect = this.joystick.getBoundingClientRect();
     this.center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     this.handleDirection(event.clientX, event.clientY);
   }
 
   onPointerMove(event) {
-    if (!this.active) return;
+    if (!this.active || event.pointerId !== this.activePointerId) return;
+    event.preventDefault();
     this.handleDirection(event.clientX, event.clientY);
   }
 
-  onPointerUp() {
+  onPointerUp(event) {
+    if (event && this.activePointerId !== event.pointerId) return;
     this.active = false;
+    this.activePointerId = null;
+    if (event) {
+      this.joystick.releasePointerCapture(event.pointerId);
+    }
     this.resetMovement();
     this.setStickPosition(0, 0);
   }
