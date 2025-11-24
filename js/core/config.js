@@ -26,4 +26,8 @@ export const config = {
   wall: {
     color: '#6b6b6b',
   },
+  camera: {
+    // プレイヤーを中心にフィールドを拡大して描画する倍率
+    zoom: 1.3,
+  },
 };
