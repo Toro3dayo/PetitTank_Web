@@ -1,4 +1,4 @@
-// 弾丸モデル
+// 弾丸モデル。所有者によって色を変え、壁でバウンドさせる。
 import { config } from '../core/config.js';
 import { getDirectionVector } from '../core/direction.js';
 
@@ -16,9 +16,9 @@ export class Bullet {
     this.alive = true;
   }
 
-  update() {
-    this.x += this.vx;
-    this.y += this.vy;
+  update(deltaSeconds) {
+    this.x += this.vx * deltaSeconds;
+    this.y += this.vy * deltaSeconds;
   }
 
   reflect(axis) {
