@@ -13,6 +13,16 @@ const input = new Input();
 new TouchControls(input);
 const controller = new GameController(ctx, input);
 
+const startButton = document.getElementById('startButton');
+if (startButton) {
+  startButton.addEventListener('click', () => controller.requestStart());
+}
+
+const restartButton = document.getElementById('restartButton');
+if (restartButton) {
+  restartButton.addEventListener('click', () => controller.requestReset());
+}
+
 startGameLoop(
   (dt) => controller.update(dt),
   () => controller.render()
