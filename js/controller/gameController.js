@@ -49,6 +49,27 @@ export class GameController {
     this.time = 0;
   }
 
+  /**
+   * UI ボタンからの開始要求。
+   * タイトル中ならそのまま開始、リザルト中ならリセットして即座に開始する。
+   */
+  requestStart() {
+    if (this.state === STATE.TITLE) {
+      this.state = STATE.PLAY;
+    } else if (this.state === STATE.GAMEOVER || this.state === STATE.VICTORY) {
+      this.resetAll();
+      this.state = STATE.PLAY;
+    }
+  }
+
+  /**
+   * UI ボタンからのリセット要求。
+   * キー入力に頼らず、スマホでもワンタップでやり直せるようにする。
+   */
+  requestReset() {
+    this.resetAll();
+  }
+
   spawnWave() {
     const wave = this.waves[this.waveIndex];
     this.enemies = wave.spawns.map((pos) => new Tank(pos.x, pos.y, DIRECTION.LEFT, false));
@@ -268,12 +289,12 @@ export class GameController {
       this.renderer.drawMessage([
         'ぷちタンク: WASD で移動 / Space で砲撃',
         '壁のバウンドを利用して敵を全滅させよう',
-        'Space または 砲弾ボタンで開始',
+        'Space / 開始ボタン / 開始/砲弾ボタンでスタート',
       ]);
     } else if (this.state === STATE.GAMEOVER) {
-      this.renderer.drawMessage(['被弾して撃破されました', 'R で再挑戦']);
+      this.renderer.drawMessage(['被弾して撃破されました', 'R または再スタートボタンで再挑戦']);
     } else if (this.state === STATE.VICTORY) {
-      this.renderer.drawMessage(['敵部隊を殲滅！', 'R で再スタート']);
+      this.renderer.drawMessage(['敵部隊を殲滅！', 'R または再スタートボタンで再スタート']);
     }
   }
 }

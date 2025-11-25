@@ -9,7 +9,11 @@
 <body>
   <header>
     <h1>ぷちタンク</h1>
-    <p class="instructions">WASD で移動、Space で砲撃、R でリセット（スマホはパッド＋砲弾ボタン）</p>
+    <p class="instructions">WASD で移動、Space で砲撃、R でリセット（スマホはパッド＋右下ボタン）</p>
+    <div class="action-buttons">
+      <button id="startButton">タップで開始</button>
+      <button id="restartButton">再スタート</button>
+    </div>
   </header>
   <main>
     <canvas id="gameCanvas" width="960" height="640"></canvas>
@@ -17,7 +21,7 @@
       <div class="touch-pad" id="touchPad">
         <div class="touch-pad__stick" id="touchPadStick"></div>
       </div>
-      <button class="fire-button" id="fireButton">砲弾</button>
+      <button class="fire-button" id="fireButton" aria-label="開始と砲撃のボタン">開始/砲弾</button>
     </div>
   </main>
   <script type="module" src="./js/main.js"></script>
