@@ -11,7 +11,7 @@ import {
   shortestAngleDelta,
 } from '../core/direction.js';
 
-const STATE = {
+export const STATE = {
   TITLE: 'TITLE',
   PLAY: 'PLAY',
   GAMEOVER: 'GAMEOVER',
@@ -24,7 +24,8 @@ export class GameController {
     this.input = input;
     this.renderer = new Renderer(ctx);
     this.walls = createLevel();
-    this.state = STATE.TITLE;
+    this.state = null;
+    this.stateListeners = [];
     this.player = null;
     this.enemies = [];
     this.bullets = [];
@@ -40,12 +41,30 @@ export class GameController {
     this.resetAll();
   }
 
+  /**
+   * 状態を変更し、リスナーへ通知する。
+   */
+  setState(nextState) {
+    if (this.state === nextState) return;
+    this.state = nextState;
+    this.stateListeners.forEach((listener) => listener(this.state));
+  }
+
+  /**
+   * 外部から状態変更を監視するための購読。
+   * 追加時点の状態も即座に通知する。
+   */
+  onStateChange(listener) {
+    this.stateListeners.push(listener);
+    listener(this.state);
+  }
+
   resetAll() {
     this.player = new Tank(160, 160, DIRECTION.RIGHT, true);
     this.waveIndex = 0;
     this.spawnWave();
     this.bullets = [];
-    this.state = STATE.TITLE;
+    this.setState(STATE.TITLE);
     this.time = 0;
   }
 
@@ -55,10 +74,10 @@ export class GameController {
    */
   requestStart() {
     if (this.state === STATE.TITLE) {
-      this.state = STATE.PLAY;
+      this.setState(STATE.PLAY);
     } else if (this.state === STATE.GAMEOVER || this.state === STATE.VICTORY) {
       this.resetAll();
-      this.state = STATE.PLAY;
+      this.setState(STATE.PLAY);
     }
   }
 
@@ -90,7 +109,7 @@ export class GameController {
     switch (this.state) {
       case STATE.TITLE:
         if (this.input.isPressed(' ')) {
-          this.state = STATE.PLAY;
+          this.setState(STATE.PLAY);
         }
         break;
       case STATE.PLAY:
@@ -256,13 +275,13 @@ export class GameController {
 
   checkEnd() {
     if (!this.player.alive) {
-      this.state = STATE.GAMEOVER;
+      this.setState(STATE.GAMEOVER);
       return;
     }
     const anyEnemyAlive = this.enemies.some((e) => e.alive);
     if (!anyEnemyAlive) {
       if (this.waveIndex >= this.waves.length - 1) {
-        this.state = STATE.VICTORY;
+        this.setState(STATE.VICTORY);
       } else {
         this.waveIndex += 1;
         this.spawnWave();
