@@ -3,6 +3,7 @@ import { startGameLoop } from './core/gameLoop.js';
 import { GameController } from './controller/gameController.js';
 import { config } from './core/config.js';
 import { TouchControls } from './ui/touchControls.js';
+import { GamePopupPresenter } from './ui/gamePopupPresenter.js';
 
 const canvas = document.getElementById('gameCanvas');
 canvas.width = config.canvas.width;
@@ -12,16 +13,7 @@ const ctx = canvas.getContext('2d');
 const input = new Input();
 new TouchControls(input);
 const controller = new GameController(ctx, input);
-
-const startButton = document.getElementById('startButton');
-if (startButton) {
-  startButton.addEventListener('click', () => controller.requestStart());
-}
-
-const restartButton = document.getElementById('restartButton');
-if (restartButton) {
-  restartButton.addEventListener('click', () => controller.requestReset());
-}
+new GamePopupPresenter(controller);
 
 startGameLoop(
   (dt) => controller.update(dt),
