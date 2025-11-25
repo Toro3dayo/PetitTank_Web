@@ -79,6 +79,9 @@ export class GameController {
     const deltaSeconds = deltaMs / 1000;
     this.time += deltaMs;
 
+    // 入力は毎フレーム更新してパッドの状態を反映する
+    this.input.update(deltaSeconds);
+
     if (this.input.isPressed('r')) {
       this.resetAll();
       return;
@@ -108,13 +111,13 @@ export class GameController {
   updatePlayer(deltaSeconds) {
     if (!this.player.alive) return;
 
-    const desired = this.getPlayerDesiredAngle();
-    if (desired !== null) {
-      const diff = shortestAngleDelta(this.player.angle, desired);
+    const desired = this.getPlayerDesiredMove();
+    if (desired) {
+      const diff = shortestAngleDelta(this.player.angle, desired.angle);
       const rotateAmount = Math.sign(diff) * Math.min(Math.abs(diff), config.player.rotateSpeed);
       this.player.rotate(rotateAmount);
       const dir = getDirectionVector(this.player.angle);
-      const distance = config.player.speed * deltaSeconds;
+      const distance = config.player.speed * deltaSeconds * desired.magnitude;
       this.tryMove(this.player, dir.x * distance, dir.y * distance);
     }
 
@@ -129,11 +132,11 @@ export class GameController {
     this.keepTankInsideLevel(this.player);
   }
 
-  getPlayerDesiredAngle() {
-    const dx = (this.input.isPressed('d') ? 1 : 0) - (this.input.isPressed('a') ? 1 : 0);
-    const dy = (this.input.isPressed('s') ? 1 : 0) - (this.input.isPressed('w') ? 1 : 0);
-    if (dx === 0 && dy === 0) return null;
-    return angleFromVector(dx, dy);
+  getPlayerDesiredMove() {
+    const move = this.input.getMoveVector();
+    if (move.magnitude === 0) return null;
+    const angle = angleFromVector(move.x, move.y);
+    return { ...move, angle };
   }
 
   updateEnemies(deltaSeconds) {
