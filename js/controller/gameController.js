@@ -1,4 +1,4 @@
-// ゲーム全体の制御
+// ゲーム全体の進行を管理するコントローラ。
 import { Tank } from '../model/tank.js';
 import { Bullet } from '../model/bullet.js';
 import { createLevel } from '../model/level.js';
@@ -25,115 +25,138 @@ export class GameController {
     this.renderer = new Renderer(ctx);
     this.walls = createLevel();
     this.state = STATE.TITLE;
-    this.stateMessage = 'Press Space to Start';
     this.player = null;
     this.enemies = [];
     this.bullets = [];
-    this.reset();
+    this.waveIndex = 0;
+    this.time = 0;
+
+    this.waves = [
+      { title: '偵察部隊', spawns: [{ x: 960, y: 760 }, { x: 880, y: 180 }] },
+      { title: '遊撃隊', spawns: [{ x: 1040, y: 420 }, { x: 220, y: 700 }, { x: 580, y: 160 }] },
+      { title: '司令車両', spawns: [{ x: 980, y: 240 }, { x: 680, y: 620 }, { x: 280, y: 220 }, { x: 540, y: 760 }] },
+    ];
+
+    this.resetAll();
   }
 
-  reset() {
-    this.player = new Tank(120, 120, DIRECTION.UP, true);
-    this.enemies = [
-      new Tank(820, 520, DIRECTION.LEFT, false),
-      new Tank(760, 140, DIRECTION.LEFT, false),
-    ];
+  resetAll() {
+    this.player = new Tank(160, 160, DIRECTION.RIGHT, true);
+    this.waveIndex = 0;
+    this.spawnWave();
     this.bullets = [];
     this.state = STATE.TITLE;
-    this.stateMessage = 'Space で開始 / R でリセット';
+    this.time = 0;
   }
 
-  update(delta) {
+  spawnWave() {
+    const wave = this.waves[this.waveIndex];
+    this.enemies = wave.spawns.map((pos) => new Tank(pos.x, pos.y, DIRECTION.LEFT, false));
+  }
+
+  update(deltaMs) {
+    const deltaSeconds = deltaMs / 1000;
+    this.time += deltaMs;
+
     if (this.input.isPressed('r')) {
-      this.reset();
+      this.resetAll();
       return;
     }
 
     switch (this.state) {
       case STATE.TITLE:
-        if (this.input.keys.size > 0) {
+        if (this.input.isPressed(' ')) {
           this.state = STATE.PLAY;
-          this.stateMessage = '';
         }
         break;
       case STATE.PLAY:
-        this.updatePlayer(delta);
-        this.updateEnemies(delta);
-        this.updateBullets();
+        this.updatePlayer(deltaSeconds);
+        this.updateEnemies(deltaSeconds);
+        this.updateBullets(deltaSeconds);
         this.checkEnd();
         break;
       case STATE.GAMEOVER:
       case STATE.VICTORY:
-        // 何もしない（R キーでリセット）
+        // R でリスタート
         break;
       default:
         break;
     }
   }
 
-  updatePlayer(delta) {
+  updatePlayer(deltaSeconds) {
     if (!this.player.alive) return;
-    const moveSpeed = config.player.speed;
 
     const desired = this.getPlayerDesiredAngle();
     if (desired !== null) {
-      this.player.angle = desired;
+      const diff = shortestAngleDelta(this.player.angle, desired);
+      const rotateAmount = Math.sign(diff) * Math.min(Math.abs(diff), config.player.rotateSpeed);
+      this.player.rotate(rotateAmount);
       const dir = getDirectionVector(this.player.angle);
-      this.tryMove(this.player, dir.x * moveSpeed, dir.y * moveSpeed);
+      const distance = config.player.speed * deltaSeconds;
+      this.tryMove(this.player, dir.x * distance, dir.y * distance);
     }
 
     if (this.input.isPressed(' ')) {
-      const now = performance.now();
+      const now = this.time;
       if (now - this.player.lastShot >= config.player.fireCooldown && this.activeBulletCount('player') < config.player.maxBullets) {
         this.spawnBullet(this.player, 'player');
         this.player.lastShot = now;
       }
     }
+
+    this.keepTankInsideLevel(this.player);
   }
 
   getPlayerDesiredAngle() {
-    if (this.input.isPressed('w')) return DIRECTION.UP;
-    if (this.input.isPressed('a')) return DIRECTION.LEFT;
-    if (this.input.isPressed('s')) return DIRECTION.DOWN;
-    if (this.input.isPressed('d')) return DIRECTION.RIGHT;
-    return null;
+    const dx = (this.input.isPressed('d') ? 1 : 0) - (this.input.isPressed('a') ? 1 : 0);
+    const dy = (this.input.isPressed('s') ? 1 : 0) - (this.input.isPressed('w') ? 1 : 0);
+    if (dx === 0 && dy === 0) return null;
+    return angleFromVector(dx, dy);
   }
 
-  updateEnemies(delta) {
+  updateEnemies(deltaSeconds) {
     this.enemies.forEach((enemy) => {
-      if (!enemy.alive) return;
+      if (!enemy.alive || !this.player.alive) return;
+
       const targetAngle = angleFromVector(this.player.x - enemy.x, this.player.y - enemy.y);
       const diff = shortestAngleDelta(enemy.angle, targetAngle);
       const rot = Math.sign(diff) * Math.min(Math.abs(diff), config.enemy.rotateSpeed);
       enemy.rotate(rot);
 
-      if (Math.random() < 0.02) {
+      // たまに前進させて位置をずらす
+      if (Math.random() < 0.05) {
         const dir = getDirectionVector(enemy.angle);
-        this.tryMove(enemy, dir.x * config.enemy.speed, dir.y * config.enemy.speed);
+        const distance = config.enemy.speed * deltaSeconds;
+        this.tryMove(enemy, dir.x * distance, dir.y * distance);
       }
 
       const distSq = (enemy.x - this.player.x) ** 2 + (enemy.y - this.player.y) ** 2;
       if (distSq < config.enemy.fireDistance ** 2) {
-        const now = performance.now();
+        const now = this.time;
         if (now - enemy.lastShot >= config.enemy.fireCooldown) {
-          this.spawnBullet(enemy, 'enemy');
+          // 少しばらけるようにランダムな角度を加算
+          const jitter = (Math.random() - 0.5) * config.enemy.scatter;
+          this.spawnBullet(enemy, 'enemy', enemy.angle + jitter);
           enemy.lastShot = now;
         }
       }
+
+      this.keepTankInsideLevel(enemy);
     });
   }
 
-  updateBullets() {
+  updateBullets(deltaSeconds) {
     this.bullets.forEach((b) => {
       if (!b.alive) return;
-      b.update();
+      b.update(deltaSeconds);
       this.handleBulletWallCollision(b);
       this.handleBulletTankCollision(b);
       if (
         b.x < -b.radius ||
-        b.x > config.canvas.width + b.radius ||
+        b.x > config.level.width + b.radius ||
         b.y < -b.radius ||
-        b.y > config.canvas.height + b.radius
+        b.y > config.level.height + b.radius
       ) {
         b.alive = false;
       }
@@ -153,12 +176,10 @@ export class GameController {
         const overlapX = bullet.radius - Math.abs(dx);
         const overlapY = bullet.radius - Math.abs(dy);
         if (overlapX < overlapY) {
-          if (dx > 0) bullet.x = wall.x + wall.width + bullet.radius;
-          else bullet.x = wall.x - bullet.radius;
+          bullet.x = dx > 0 ? wall.x + wall.width + bullet.radius : wall.x - bullet.radius;
           bullet.reflect('x');
         } else {
-          if (dy > 0) bullet.y = wall.y + wall.height + bullet.radius;
-          else bullet.y = wall.y - bullet.radius;
+          bullet.y = dy > 0 ? wall.y + wall.height + bullet.radius : wall.y - bullet.radius;
           bullet.reflect('y');
         }
       }
@@ -191,11 +212,18 @@ export class GameController {
     }
   }
 
-  spawnBullet(tank, owner) {
-    const dir = getDirectionVector(tank.angle);
-    const spawnX = tank.x + dir.x * (tank.radius + 2);
-    const spawnY = tank.y + dir.y * (tank.radius + 2);
-    this.bullets.push(new Bullet(spawnX, spawnY, tank.angle, owner));
+  keepTankInsideLevel(tank) {
+    const margin = tank.radius + 4;
+    tank.x = clamp(tank.x, margin, config.level.width - margin);
+    tank.y = clamp(tank.y, margin, config.level.height - margin);
+  }
+
+  spawnBullet(tank, owner, angleOverride) {
+    const angle = angleOverride ?? tank.angle;
+    const dir = getDirectionVector(angle);
+    const spawnX = tank.x + dir.x * (tank.radius + 4);
+    const spawnY = tank.y + dir.y * (tank.radius + 4);
+    this.bullets.push(new Bullet(spawnX, spawnY, angle, owner));
   }
 
   activeBulletCount(owner) {
@@ -205,17 +233,59 @@ export class GameController {
   checkEnd() {
     if (!this.player.alive) {
       this.state = STATE.GAMEOVER;
-      this.stateMessage = 'Game Over - R で再挑戦';
       return;
     }
     const anyEnemyAlive = this.enemies.some((e) => e.alive);
     if (!anyEnemyAlive) {
-      this.state = STATE.VICTORY;
-      this.stateMessage = 'Victory! - R でリスタート';
+      if (this.waveIndex >= this.waves.length - 1) {
+        this.state = STATE.VICTORY;
+      } else {
+        this.waveIndex += 1;
+        this.spawnWave();
+      }
+    }
+  }
+
+  render() {
+    this.renderer.clear();
+
+    const cameraFocus = this.player?.alive ? this.player : { x: config.level.width / 2, y: config.level.height / 2 };
+    this.renderer.beginCamera(cameraFocus);
+    this.renderer.drawWalls(this.walls);
+    this.enemies.forEach((e) => this.renderer.drawTank(e));
+    this.renderer.drawTank(this.player);
+    this.bullets.forEach((b) => this.renderer.drawBullet(b));
+    this.renderer.endCamera();
+
+    const cooldown = Math.max(0, config.player.fireCooldown - (this.time - this.player.lastShot)) / 1000;
+    this.renderer.drawHud({
+      wave: this.waveIndex + 1,
+      remaining: this.enemies.filter((e) => e.alive).length,
+      cooldown,
+    });
+
+    if (this.state === STATE.TITLE) {
+      this.renderer.drawMessage([
+        'ぷちタンク: WASD で移動 / Space で砲撃',
+        '壁のバウンドを利用して敵を全滅させよう',
+        'Space または 砲弾ボタンで開始',
+      ]);
+    } else if (this.state === STATE.GAMEOVER) {
+      this.renderer.drawMessage(['被弾して撃破されました', 'R で再挑戦']);
+    } else if (this.state === STATE.VICTORY) {
+      this.renderer.drawMessage(['敵部隊を殲滅！', 'R で再スタート']);
     }
   }
 }
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function circleRectCollision(circle, rect) {
+  const nearestX = clamp(circle.x, rect.x, rect.x + rect.width);
+  const nearestY = clamp(circle.y, rect.y, rect.y + rect.height);
+  const dx = circle.x - nearestX;
+  const dy = circle.y - nearestY;
+  return dx * dx + dy * dy < circle.r * circle.r;
 }

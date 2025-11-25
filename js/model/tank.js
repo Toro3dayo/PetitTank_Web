@@ -1,4 +1,4 @@
-// 戦車モデル
+// 戦車モデル。プレイヤーと敵を同じクラスで扱う。
 import { config } from '../core/config.js';
 
 export class Tank {
@@ -12,20 +12,21 @@ export class Tank {
     this.hp = 1;
     this.alive = true;
     this.lastShot = 0;
+    this.turnIntent = 0;
   }
 
   rotate(delta) {
     this.angle += delta;
   }
 
-  forward(speed) {
-    this.x += Math.cos(this.angle) * speed;
-    this.y += Math.sin(this.angle) * speed;
+  forward(distance) {
+    this.x += Math.cos(this.angle) * distance;
+    this.y += Math.sin(this.angle) * distance;
   }
 
-  backward(speed) {
-    this.x -= Math.cos(this.angle) * speed;
-    this.y -= Math.sin(this.angle) * speed;
+  backward(distance) {
+    this.x -= Math.cos(this.angle) * distance;
+    this.y -= Math.sin(this.angle) * distance;
   }
 
   takeDamage() {
