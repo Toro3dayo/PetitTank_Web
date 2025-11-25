@@ -14,7 +14,7 @@ export class Renderer {
   }
 
   clear() {
-    this.ctx.fillStyle = '#0c0c0f';
+    this.ctx.fillStyle = '#e8edf5';
     this.ctx.fillRect(0, 0, config.canvas.width, config.canvas.height);
   }
 
@@ -45,7 +45,7 @@ export class Renderer {
     const startY = Math.floor((centerY - halfViewH) / 40) * 40;
     const endY = Math.ceil((centerY + halfViewH) / 40) * 40;
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.strokeStyle = 'rgba(28, 36, 57, 0.12)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let x = startX; x <= endX; x += 40) {
@@ -60,8 +60,8 @@ export class Renderer {
   }
 
   drawWalls(walls) {
-    this.ctx.fillStyle = '#2f323a';
-    this.ctx.strokeStyle = '#575b65';
+    this.ctx.fillStyle = '#c1cadb';
+    this.ctx.strokeStyle = '#8d9bb5';
     walls.forEach((wall) => {
       this.ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
       this.ctx.strokeRect(wall.x + 1, wall.y + 1, wall.width - 2, wall.height - 2);
